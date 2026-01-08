@@ -1,0 +1,260 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎉 Super Funny Games Portal 🎉</title>
+<style>
+body { font-family: 'Comic Sans MS', sans-serif; background: #f0f8ff; margin: 0; padding: 10px; text-align: center; }
+h1 { margin-bottom: 10px; font-size: 1.8em; }
+.tabs { display: flex; justify-content: center; margin-bottom: 15px; flex-wrap: wrap; }
+.tab { padding: 10px 15px; margin: 2px; background: #007bff; color: #fff; cursor: pointer; border-radius: 5px; font-weight: bold; font-size: 0.9em; }
+.tab.active { background: #0056b3; }
+.gameContainer { display: none; border: 2px solid #333; background: #fff; width: 90%; max-width: 400px; height: 400px; margin: 0 auto 15px auto; padding: 10px; position: relative; overflow: hidden; border-radius: 10px;}
+.gameContainer.active { display: block; }
+button { padding: 10px 15px; margin-top: 10px; font-size: 16px; cursor: pointer; border-radius: 5px; }
+#cat, #dodgyButton { position: absolute; cursor: pointer; transition: all 0.2s ease; touch-action: manipulation;}
+.balloon { width: 50px; height: 50px; border-radius: 50%; position: absolute; cursor: pointer; transition: all 0.2s ease; }
+.confetti { position: absolute; font-size: 20px; animation: fall 2s linear forwards; }
+@keyframes fall { 0% {opacity:1; transform: translateY(0px);} 100% {opacity:0; transform: translateY(200px);}}
+#timerBar { width: 100%; height: 10px; background: #ddd; margin-top: 5px; border-radius: 5px; }
+#timerProgress { height: 100%; background: #ff5252; width: 100%; border-radius: 5px;}
+#leaderboard { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: #fff; border: 2px solid #333; padding: 20px; display: none; z-index: 9999; width: 90%; max-width: 300px; border-radius: 10px;}
+#leaderboard h2 { margin-top: 0; }
+#leaderboard button { margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<h1>🎉 Super Funny Games Portal 🎉</h1>
+
+<div class="tabs">
+    <div class="tab active" onclick="showGame('game1')">Catch the Cat 🐱</div>
+    <div class="tab" onclick="showGame('game2')">Dodgy Button 🤪</div>
+    <div class="tab" onclick="showGame('game3')">Joke Generator 😂</div>
+    <div class="tab" onclick="showGame('game4')">Balloon Pop 🎈</div>
+    <div class="tab" onclick="showGame('game5')">Magic Dice 🎲</div>
+</div>
+
+<!-- 1. Catch the Cat -->
+<div class="gameContainer active" id="game1">
+    <div id="cat" style="width:50px;height:50px;background:red;border-radius:50%;"></div>
+    <p>Score: <span id="scoreCat">0</span></p>
+    <div id="timerBar"><div id="timerProgress"></div></div>
+    <button onclick="startCatGame()">Start Game</button>
+    <button onclick="shareScore('Catch the Cat', scoreCat)">Share on Facebook</button>
+    <audio id="meowSound" src="https://www.soundjay.com/cat/cat-meow-1.mp3"></audio>
+</div>
+
+<!-- 2. Dodgy Button -->
+<div class="gameContainer" id="game2">
+    <button id="dodgyButton">Click me if you can!</button>
+    <p>Score: <span id="scoreDodgy">0</span></p>
+    <button onclick="shareScore('Dodgy Button', scoreDodgy)">Share on Facebook</button>
+</div>
+
+<!-- 3. Joke Generator -->
+<div class="gameContainer" id="game3">
+    <p id="joke">Click the button to get a joke!</p>
+    <button onclick="newJoke()">Tell me a joke</button>
+    <button onclick="shareScore('Joke Generator', 'Just got a funny joke! 😂')">Share on Facebook</button>
+</div>
+
+<!-- 4. Balloon Pop -->
+<div class="gameContainer" id="game4"></div>
+<p>Score: <span id="scoreBalloon">0</span></p>
+<button onclick="startBalloons()">Start Balloons</button>
+<button onclick="shareScore('Balloon Pop', balloonScore)">Share on Facebook</button>
+<audio id="popSound" src="https://www.soundjay.com/button/sounds/button-16.mp3"></audio>
+
+<!-- 5. Magic Dice -->
+<div class="gameContainer" id="game5">
+    <p>Click the button to roll the dice!</p>
+    <p id="diceResult"></p>
+    <button onclick="rollDice()">Roll Dice</button>
+    <button onclick="shareScore('Magic Dice', dice*10)">Share on Facebook</button>
+</div>
+
+<!-- Leaderboard -->
+<div id="leaderboard">
+    <h2>🏆 Leaderboard 🏆</h2>
+    <div id="scoresList"></div>
+    <button onclick="closeLeaderboard()">Close</button>
+</div>
+
+<script>
+// ===== Tab Switching =====
+function showGame(id) {
+    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.gameContainer').forEach(game => game.classList.remove('active'));
+    document.querySelector('.tab[onclick*="'+id+'"]').classList.add('active');
+    document.getElementById(id).classList.add('active');
+}
+
+// ===== Confetti =====
+function spawnConfetti(x, y){
+    const conf = document.createElement('div');
+    conf.className = 'confetti';
+    conf.style.left = x;
+    conf.style.top = y;
+    conf.textContent = ['🎉','✨','💥','😂','🍀'][Math.floor(Math.random()*5)];
+    document.body.appendChild(conf);
+    setTimeout(()=>conf.remove(),2000);
+}
+
+// ===== Leaderboard =====
+let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+function updateLeaderboard(gameName, score){
+    leaderboard.push({game: gameName, score: score});
+    leaderboard.sort((a,b)=>b.score-a.score);
+    leaderboard = leaderboard.slice(0,5);
+    localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+    showLeaderboard();
+}
+function showLeaderboard(){
+    const scoresList = document.getElementById('scoresList');
+    scoresList.innerHTML = '';
+    leaderboard.forEach(item=>{
+        const div = document.createElement('div');
+        div.textContent = `${item.game}: ${item.score}`;
+        scoresList.appendChild(div);
+    });
+    document.getElementById('leaderboard').style.display = 'block';
+}
+function closeLeaderboard(){
+    document.getElementById('leaderboard').style.display = 'none';
+}
+
+// ===== Facebook Share =====
+function shareScore(gameName, score) {
+    const text = typeof score === 'number' ? `I just scored ${score} points in ${gameName}! Can you beat me? 🎉` : score;
+    const url = encodeURIComponent('https://your-game-link.com'); // Replace with your game URL
+    const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${encodeURIComponent(text)}`;
+    window.open(fbShareUrl, '_blank');
+}
+
+// ===== 1. Catch the Cat =====
+let scoreCat = 0, catTime = 10, catInterval;
+const cat = document.getElementById('cat');
+const timerProgress = document.getElementById('timerProgress');
+
+function moveCat() {
+    const gameArea = document.getElementById('game1');
+    const maxX = gameArea.clientWidth - cat.clientWidth;
+    const maxY = gameArea.clientHeight - cat.clientHeight;
+    cat.style.left = Math.random() * maxX + 'px';
+    cat.style.top = Math.random() * maxY + 'px';
+    cat.style.width = (30 + Math.random()*40) + 'px';
+    cat.style.height = cat.style.width;
+}
+
+cat.addEventListener('click', () => {
+    scoreCat++;
+    document.getElementById('scoreCat').textContent = scoreCat;
+    moveCat();
+    document.getElementById('meowSound').play();
+    spawnConfetti(cat.style.left, cat.style.top);
+});
+
+function startCatGame() {
+    scoreCat = 0; catTime = 10;
+    document.getElementById('scoreCat').textContent = scoreCat;
+    moveCat();
+    clearInterval(catInterval);
+    timerProgress.style.width = '100%';
+    catInterval = setInterval(() => {
+        catTime--;
+        timerProgress.style.width = (catTime/10*100) + '%';
+        if(catTime <= 0){
+            clearInterval(catInterval);
+            alert('Time up! Your score: ' + scoreCat);
+            updateLeaderboard('Catch the Cat', scoreCat);
+        }
+    }, 1000);
+}
+
+// ===== 2. Dodgy Button =====
+let scoreDodgy = 0;
+const dodgyButton = document.getElementById('dodgyButton');
+
+function moveDodgyButton(){
+    const gameArea = document.getElementById('game2');
+    const maxX = gameArea.clientWidth - dodgyButton.clientWidth;
+    const maxY = gameArea.clientHeight - dodgyButton.clientHeight;
+    dodgyButton.style.left = Math.random() * maxX + 'px';
+    dodgyButton.style.top = Math.random() * maxY + 'px';
+    dodgyButton.style.width = (80 + Math.random()*40) + 'px';
+    dodgyButton.style.height = '40px';
+    dodgyButton.textContent = ["Catch me!", "Too slow!", "Haha!"][Math.floor(Math.random()*3)];
+}
+
+dodgyButton.addEventListener('mouseenter', moveDodgyButton);
+dodgyButton.addEventListener('touchstart', moveDodgyButton);
+
+dodgyButton.addEventListener('click', () => {
+    scoreDodgy++;
+    document.getElementById('scoreDodgy').textContent = scoreDodgy;
+    spawnConfetti(dodgyButton.style.left, dodgyButton.style.top);
+    updateLeaderboard('Dodgy Button', scoreDodgy);
+});
+
+// ===== 3. Joke Generator =====
+async function newJoke() {
+    try {
+        const response = await fetch('https://icanhazdadjoke.com/', { headers: { 'Accept':'application/json' }});
+        const data = await response.json();
+        document.getElementById('joke').textContent = data.joke;
+        spawnConfetti('200px','50px');
+    } catch(e) {
+        document.getElementById('joke').textContent = "Oops! Can't fetch joke. Try again!";
+    }
+}
+
+// ===== 4. Balloon Pop =====
+let balloonScore = 0, balloonInterval;
+const gameAreaB = document.getElementById('game4');
+const popSound = document.getElementById('popSound');
+
+function startBalloons() {
+    balloonScore = 0;
+    document.getElementById('scoreBalloon').textContent = balloonScore;
+    gameAreaB.innerHTML = '';
+    balloonInterval = setInterval(() => {
+        const balloon = document.createElement('div');
+        balloon.className = "balloon";
+        balloon.style.background = ["red","blue","green","yellow","pink"][Math.floor(Math.random()*5)];
+        balloon.style.left = Math.random() * (gameAreaB.clientWidth - 50) + 'px';
+        balloon.style.top = '350px';
+        gameAreaB.appendChild(balloon);
+        let pos = 350;
+        const speed = 2 + Math.random()*3;
+        const move = setInterval(() => {
+            pos -= speed;
+            balloon.style.top = pos + 'px';
+            if(pos < -50) { clearInterval(move); gameAreaB.removeChild(balloon); }
+        }, 20);
+        balloon.addEventListener('click', () => {
+            balloonScore++;
+            document.getElementById('scoreBalloon').textContent = balloonScore;
+            popSound.play();
+            spawnConfetti(balloon.style.left, balloon.style.top);
+            clearInterval(move);
+            gameAreaB.removeChild(balloon);
+            updateLeaderboard('Balloon Pop', balloonScore);
+        });
+    }, 1000);
+}
+
+// ===== 5. Magic Dice =====
+let dice = 1;
+function rollDice() {
+    dice = Math.floor(Math.random()*6)+1;
+    const outcomes = ["Oops! Lose a turn! 😢", "Double trouble! 😈", "Lucky you! 🍀", "Try again! 🤔", "Winner! 🎉", "Jackpot! 🤑"];
+    document.getElementById('diceResult').textContent = `Dice: ${dice} → ${outcomes[dice-1]}`;
+    spawnConfetti('150px','200px');
+    updateLeaderboard('Magic Dice', dice*10);
+}
+</script>
+</body>
+</html>
